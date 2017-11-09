@@ -1,0 +1,7 @@
+[package]
+name = "log_prob"
+version = "0.1.0"
+authors = ["Tobias Denkinger <tobias.denkinger@tu-dresden.de>"]
+
+[dependencies]
+num-traits = "0.1.36"
