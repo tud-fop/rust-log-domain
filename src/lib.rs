@@ -1,11 +1,11 @@
 extern crate num_traits;
 
-use std::{fmt, f64};
+use std::fmt::{self, Debug, Display, Formatter};
 use std::cmp::Ordering;
 use std::ops::{Add, Sub, Mul, Div};
 use std::str::FromStr;
 
-use self::num_traits::{One, Zero};
+use self::num_traits::{Float, One, Zero};
 
 /// A struct that represents probabilities.
 /// A probability is internally represented as its natural logarithm.
@@ -48,38 +48,40 @@ use self::num_traits::{One, Zero};
 /// # }
 /// ```
 #[derive(PartialOrd, Debug, Clone, Copy)]
-pub struct LogProb(f64);
+pub struct LogProb<F: Float>(F);
 
-impl LogProb {
+impl<F: Float + Debug> LogProb<F> {
     /// Creates a new `LogProb` from a given value in the interval [0,∞).
-    pub fn new(value: f64) -> Result<Self, String> {
-        if 0.0 <= value {
+    pub fn new(value: F) -> Result<Self, String> {
+        if F::zero() <= value {
             Ok(LogProb::new_unchecked(value))
         } else {
-            Err(format!("{} is not a probability, i.e. not in the interval [0,∞).", value))
+            Err(format!("{:?} is not a probability, i.e. not in the interval [0,∞).", value))
         }
     }
+}
 
+impl<F: Float> LogProb<F> {
     /// Logarithm of the probability that is represented by the given `LogProb`.
-    pub fn ln(&self) -> f64 {
+    pub fn ln(&self) -> F {
         match self {
             &LogProb(value) => value,
         }
     }
 
     /// Same as `new`, but without bounds check.
-    pub fn new_unchecked(value: f64) -> Self {
+    pub fn new_unchecked(value: F) -> Self {
         LogProb(value.ln())
     }
 
     /// Probability that is represented by the given `LogProb`.
-    pub fn probability(&self) -> f64 {
+    pub fn probability(&self) -> F {
         self.ln().exp()
     }
 }
 
 /// An `impl` of `Ord` that defines `Exp(NaN) = Exp(NaN)`, `Exp(NaN) < Exp(y)`, and `Exp(x) < Exp(y)` for `x < y`.
-impl Ord for LogProb {
+impl<F: Float> Ord for LogProb<F> {
     fn cmp(&self, other: &Self) -> Ordering {
         match self.partial_cmp(&other) {
             Some(ordering) => ordering,
@@ -99,22 +101,22 @@ impl Ord for LogProb {
 }
 
 /// An `impl` of `PartialEq` that defines `Exp(NaN) = Exp(NaN)` and `Exp(x) = Exp(y)` for `x - y < f64::EPSILON`.
-impl PartialEq for LogProb {
+impl<F: Float> PartialEq for LogProb<F> {
     fn eq(&self, other: &Self) -> bool {
         if self.ln().is_nan() {
             if other.ln().is_nan() { true } else { false }
         } else if other.ln().is_nan() {
             false
         } else {
-            self.ln() == other.ln() || (self.ln() - other.ln()).abs() <= f64::EPSILON
+            self.ln() == other.ln() || (self.ln() - other.ln()).abs() <= F::epsilon()
         }
     }
 }
 
-impl Eq for LogProb {}
+impl<F: Float> Eq for LogProb<F> {}
 
 /// An `impl` of `Add` that uses only two applications of transcendental functions (`exp` and `ln_1p`) to increase precision.
-impl Add for LogProb {
+impl<F: Float> Add for LogProb<F> {
     type Output = Self;
 
     fn add(self, other: Self) -> Self {
@@ -141,7 +143,7 @@ impl Add for LogProb {
 }
 
 /// An `impl` of `Sub` that uses only two applications of transcendental functions (`exp_m1` and `ln`) to increase precision.
-impl Sub for LogProb {
+impl<F: Float + Debug> Sub for LogProb<F> {
     type Output = Self ;
 
     fn sub(self, other: Self) -> Self {
@@ -157,13 +159,13 @@ impl Sub for LogProb {
             // = LogProb( x + ln(- exp_m1(y - x)) )
             (x, y) if x > y  => LogProb(x + (-(y - x).exp_m1()).ln()),
             (x, y) if x == y => LogProb::zero(),
-            (x, y) if x <  y => panic!("exp({}) - exp({}) is less than zero", x, y),
+            (x, y) if x <  y => panic!("exp({:?}) - exp({:?}) is less than zero", x, y),
             _                => unreachable!(),
         }
     }
 }
 
-impl Mul for LogProb {
+impl<F: Float> Mul for LogProb<F> {
     type Output = Self;
 
     fn mul(self, other: Self) -> Self {
@@ -171,7 +173,7 @@ impl Mul for LogProb {
     }
 }
 
-impl Div for LogProb {
+impl<F: Float> Div for LogProb<F> {
     type Output = Self;
 
     fn div(self, other: Self) -> Self {
@@ -183,46 +185,35 @@ impl Div for LogProb {
     }
 }
 
-impl Zero for LogProb {
-    fn zero() -> LogProb {
-        LogProb(f64::NEG_INFINITY)
+impl<F: Float> Zero for LogProb<F> {
+    fn zero() -> Self {
+        LogProb(F::neg_infinity())
     }
 
     fn is_zero(&self) -> bool {
-        self.ln() == f64::NEG_INFINITY
+        self.ln() == F::neg_infinity()
     }
 }
 
-impl One for LogProb {
-    fn one() -> LogProb {
-        LogProb(0.0)
+impl<F: Float> One for LogProb<F> {
+    fn one() -> Self {
+        LogProb(F::zero())
     }
 }
 
-impl<T: Into<f64>> From<T> for LogProb {
-    fn from(value: T) -> Self {
-        let the_f64 = value.into();
-        if 0.0 <= the_f64 {
-            LogProb::new_unchecked(the_f64)
-        } else {
-            panic!("{} is not a probability, i.e. not in the interval [0,∞).", the_f64)
-        }
-    }
-}
-
-impl FromStr for LogProb {
+impl<F: Debug + Float + FromStr<Err=E>, E: ToString> FromStr for LogProb<F> {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.parse() {
             Ok(p) => LogProb::new(p),
-            Err(e) => Err(e.to_string())
+            Err(e) => Err(e.to_string()),
         }
     }
 }
 
-impl fmt::Display for LogProb {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl<F: Float + Display> Display for LogProb<F> {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "{}", self.probability())
     }
 }
