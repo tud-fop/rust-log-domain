@@ -25,11 +25,13 @@ use self::num_traits::{Float, One, Zero};
 ///         assert_eq!(x.probability(), 0.5);    // 0.5         = 0.5
 ///         assert_eq!(x.ln(), f64::ln(0.5));    // ln(0.5)     = ln(0.5)
 ///
-///         // Operations `+`, `-`, `*`, and `/`
+///         // Operations `+`, `-`, `*`, `/`, and `pow`
 ///         assert_eq!(x + y, z);                // 0.5  + 0.25 = 0.75
 ///         assert_eq!(z - x, y);                // 0.75 - 0.5  = 0.25
 ///         assert_eq!(x * x, y);                // 0.5  ⋅ 0.5  = 0.25
 ///         assert_eq!(y / x, x);                // 0.25 / 0.5  = 0.5
+///         assert_eq!(x.pow(2.0), y);           // 0.5²        = 0.25
+///         assert_eq!(y.pow(1.0/2.0), x);       // √0.25       = 0.5
 ///
 ///         // Neutral elements `LogProb::zero()` and `LogProb::one()`
 ///         assert_eq!(z + LogProb::zero(), z);  // 0.75 + 0    = 0.75
@@ -38,6 +40,8 @@ use self::num_traits::{Float, One, Zero};
 ///         assert_eq!(z / z, LogProb::one());   // 0.75 / 0.75 = 1
 ///         assert_eq!(z * LogProb::zero(), LogProb::zero());
 ///                                              // 0.75 * 0    = 0
+///         assert_eq!(z.pow(0.0), LogProb::one());
+///                                              // 0.75⁰       = 1
 ///
 ///         // Comparison
 ///         assert!(z > y);                      // 0.75 > 0.25
@@ -77,6 +81,13 @@ impl<F: Float> LogProb<F> {
     /// Probability that is represented by the given `LogProb`.
     pub fn probability(&self) -> F {
         self.ln().exp()
+    }
+
+    /// Raise the represented probability to the power of a `Float` value.
+    pub fn pow(&self, power: F) -> Self {
+        let &LogProb(value) = self;
+
+        LogProb(value * power)
     }
 }
 
