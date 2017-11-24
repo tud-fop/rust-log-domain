@@ -7,83 +7,84 @@ use std::str::FromStr;
 
 use self::num_traits::{Float, One, Zero};
 
-/// A struct that represents probabilities.
-/// A probability is internally represented as its natural logarithm.
-/// Probabilities greater than 1 are allowed during calculations.
+/// A struct that represents positive floats by their natural logarithm.
 ///
 /// # Examples
 ///
 /// ```
 /// # extern crate num_traits;
-/// # extern crate log_prob;
+/// # extern crate log_domain;
 /// # fn main() {
-/// use log_prob::LogProb;
+/// use log_domain::LogDomain;
 /// use num_traits::{One, Zero};
 ///
-/// match (LogProb::new(0.5), LogProb::new(0.25), LogProb::new(0.75)) {
+/// match (LogDomain::new(0.5), LogDomain::new(0.25), LogDomain::new(0.75)) {
 ///     (Ok(x), Ok(y), Ok(z)) => {
-///         assert_eq!(x.probability(), 0.5);    // 0.5         = 0.5
-///         assert_eq!(x.ln(), f64::ln(0.5));    // ln(0.5)     = ln(0.5)
+///         assert_eq!(x.value(), 0.5);            // 0.5         = 0.5
+///         assert_eq!(x.ln(), f64::ln(0.5));      // ln(0.5)     = ln(0.5)
 ///
 ///         // Operations `+`, `-`, `*`, and `/`
-///         assert_eq!(x + y, z);                // 0.5  + 0.25 = 0.75
-///         assert_eq!(z - x, y);                // 0.75 - 0.5  = 0.25
-///         assert_eq!(x * x, y);                // 0.5  ⋅ 0.5  = 0.25
-///         assert_eq!(y / x, x);                // 0.25 / 0.5  = 0.5
+///         assert_eq!(x + y, z);                  // 0.5  + 0.25 = 0.75
+///         assert_eq!(z - x, y);                  // 0.75 - 0.5  = 0.25
+///         assert_eq!(x * x, y);                  // 0.5  ⋅ 0.5  = 0.25
+///         assert_eq!(y / x, x);                  // 0.25 / 0.5  = 0.5
 ///
-///         // Neutral elements `LogProb::zero()` and `LogProb::one()`
-///         assert_eq!(z + LogProb::zero(), z);  // 0.75 + 0    = 0.75
-///         assert_eq!(z - z, LogProb::zero());  // 0.75 - 0.75 = 0
-///         assert_eq!(z * LogProb::one(), z);   // 0.75 * 1    = 0.75
-///         assert_eq!(z / z, LogProb::one());   // 0.75 / 0.75 = 1
-///         assert_eq!(z * LogProb::zero(), LogProb::zero());
-///                                              // 0.75 * 0    = 0
+///         // Neutral elements `LogDomain::zero()` and `LogDomain::one()`
+///         assert_eq!(z + LogDomain::zero(), z);  // 0.75 + 0    = 0.75
+///         assert_eq!(z - z, LogDomain::zero());  // 0.75 - 0.75 = 0
+///         assert_eq!(z * LogDomain::one(), z);   // 0.75 * 1    = 0.75
+///         assert_eq!(z / z, LogDomain::one());   // 0.75 / 0.75 = 1
+///         assert_eq!(z * LogDomain::zero(), LogDomain::zero());
+///                                                // 0.75 * 0    = 0
 ///
 ///         // Comparison
-///         assert!(z > y);                      // 0.75 > 0.25
-///         assert!(y < z);                      // 0.25 < 0.75
+///         assert!(z > y);                        // 0.75 > 0.25
+///         assert!(y < z);                        // 0.25 < 0.75
 ///     },
 ///     _ => panic!(),
 /// }
 /// # }
 /// ```
 #[derive(PartialOrd, Debug, Clone, Copy)]
-pub struct LogProb<F: Float>(F);
+pub struct LogDomain<F: Float>(F);
 
-impl<F: Float + Debug> LogProb<F> {
-    /// Creates a new `LogProb` from a given value in the interval [0,∞).
+impl<F: Float + Debug> LogDomain<F> {
+    /// Creates a new `LogDomain` from a given value in the interval [0,∞).
     pub fn new(value: F) -> Result<Self, String> {
         if F::zero() <= value {
-            Ok(LogProb::new_unchecked(value))
+            Ok(LogDomain::new_unchecked(value))
         } else {
-            Err(format!("{:?} is not a probability, i.e. not in the interval [0,∞).", value))
+            Err(format!("{:?} is not in the interval [0,∞).", value))
         }
     }
 }
 
-impl<F: Float> LogProb<F> {
-    /// Logarithm of the probability that is represented by the given `LogProb`.
+impl<F: Float> LogDomain<F> {
+    /// Logarithm of the value that is represented by the given `LogDomain`.
     pub fn ln(&self) -> F {
-        match self {
-            &LogProb(value) => value,
+        match *self {
+            LogDomain(value) => value,
         }
     }
 
     /// Same as `new`, but without bounds check.
-    pub fn new_unchecked(value: F) -> Self {
-        LogProb(value.ln())
+    fn new_unchecked(value: F) -> Self {
+        LogDomain(value.ln())
     }
 
-    /// Probability that is represented by the given `LogProb`.
-    pub fn probability(&self) -> F {
+    /// Value that is represented by the given `LogDomain`.
+    pub fn value(&self) -> F {
         self.ln().exp()
     }
 }
 
-/// An `impl` of `Ord` that defines `Exp(NaN) = Exp(NaN)`, `Exp(NaN) < Exp(y)`, and `Exp(x) < Exp(y)` for `x < y`.
-impl<F: Float> Ord for LogProb<F> {
+/// An `impl` of `Ord` that defines
+///  `Exp(NaN) = Exp(NaN)`,
+///  `Exp(NaN) < Exp(y)`, and
+///  `Exp(x) < Exp(y)` for `x < y`.
+impl<F: Float> Ord for LogDomain<F> {
     fn cmp(&self, other: &Self) -> Ordering {
-        match self.partial_cmp(&other) {
+        match self.partial_cmp(other) {
             Some(ordering) => ordering,
             None => {
                 if self.ln().is_nan() {
@@ -100,11 +101,13 @@ impl<F: Float> Ord for LogProb<F> {
     }
 }
 
-/// An `impl` of `PartialEq` that defines `Exp(NaN) = Exp(NaN)` and `Exp(x) = Exp(y)` for `x - y < f64::EPSILON`.
-impl<F: Float> PartialEq for LogProb<F> {
+/// An `impl` of `PartialEq` that defines
+///  `Exp(NaN) = Exp(NaN)` and
+///  `Exp(x) = Exp(y)` for `x - y < F::EPSILON`.
+impl<F: Float> PartialEq for LogDomain<F> {
     fn eq(&self, other: &Self) -> bool {
         if self.ln().is_nan() {
-            if other.ln().is_nan() { true } else { false }
+            other.ln().is_nan()
         } else if other.ln().is_nan() {
             false
         } else {
@@ -113,10 +116,11 @@ impl<F: Float> PartialEq for LogProb<F> {
     }
 }
 
-impl<F: Float> Eq for LogProb<F> {}
+impl<F: Float> Eq for LogDomain<F> {}
 
-/// An `impl` of `Add` that uses only two applications of transcendental functions (`exp` and `ln_1p`) to increase precision.
-impl<F: Float> Add for LogProb<F> {
+/// An `impl` of `Add` that uses only two applications of transcendental functions
+/// (`exp` and `ln_1p`) to increase precision.
+impl<F: Float> Add for LogDomain<F> {
     type Output = Self;
 
     fn add(self, other: Self) -> Self {
@@ -130,64 +134,65 @@ impl<F: Float> Add for LogProb<F> {
 
         // Derivation of the formula:
         // Let x ≥ y.  Then
-        // LogProb(x) + LogProb(y)
+        // LogDomain(x) + LogDomain(y)
         // = exp(x) + exp(y)
-        // = LogProb( ln(exp(x) + exp(y)) )
-        // = LogProb( ln(exp(x) + exp(x) ⋅ exp(y) / exp(x)) )
-        // = LogProb( ln(exp(x) + exp(x) ⋅ exp(y - x)) )
-        // = LogProb( ln(exp(x) ⋅ (1 + exp(y - x))) )
-        // = LogProb( x + ln(1 + exp(y - x)) )
-        // = LogProb( x + ln_1p(exp(y - x)) )
-        LogProb(x + (y - x).exp().ln_1p())
+        // = LogDomain( ln(exp(x) + exp(y)) )
+        // = LogDomain( ln(exp(x) + exp(x) ⋅ exp(y) / exp(x)) )
+        // = LogDomain( ln(exp(x) + exp(x) ⋅ exp(y - x)) )
+        // = LogDomain( ln(exp(x) ⋅ (1 + exp(y - x))) )
+        // = LogDomain( x + ln(1 + exp(y - x)) )
+        // = LogDomain( x + ln_1p(exp(y - x)) )
+        LogDomain(x + (y - x).exp().ln_1p())
     }
 }
 
-/// An `impl` of `Sub` that uses only two applications of transcendental functions (`exp_m1` and `ln`) to increase precision.
-impl<F: Float + Debug> Sub for LogProb<F> {
+/// An `impl` of `Sub` that uses only two applications of transcendental functions
+/// (`exp_m1` and `ln`) to increase precision.
+impl<F: Float + Debug> Sub for LogDomain<F> {
     type Output = Self ;
 
     fn sub(self, other: Self) -> Self {
         match (self.ln(), other.ln()) {
             // Derivation of the formula:
             // Let x > y. Then
-            // LogProb(x) - LogProb(y)
+            // LogDomain(x) - LogDomain(y)
             // = exp(x) - exp(y)
-            // = LogProb( ln(exp(x) - exp(y)) )
-            // = LogProb( ln(exp(x) - exp(x) ⋅ exp(y) / exp(x)) )
-            // = LogProb( ln(exp(x) - exp(x) ⋅ exp(y - x)) )
-            // = LogProb( x + ln(1 - exp(y - x)) )
-            // = LogProb( x + ln(- exp_m1(y - x)) )
-            (x, y) if x > y  => LogProb(x + (-(y - x).exp_m1()).ln()),
-            (x, y) if x == y => LogProb::zero(),
+            // = LogDomain( ln(exp(x) - exp(y)) )
+            // = LogDomain( ln(exp(x) - exp(x) ⋅ exp(y) / exp(x)) )
+            // = LogDomain( ln(exp(x) - exp(x) ⋅ exp(y - x)) )
+            // = LogDomain( x + ln(1 - exp(y - x)) )
+            // = LogDomain( x + ln(- exp_m1(y - x)) )
+            (x, y) if x > y  => LogDomain(x + (-(y - x).exp_m1()).ln()),
+            (x, y) if x == y => LogDomain::zero(),
             (x, y) if x <  y => panic!("exp({:?}) - exp({:?}) is less than zero", x, y),
             _                => unreachable!(),
         }
     }
 }
 
-impl<F: Float> Mul for LogProb<F> {
+impl<F: Float> Mul for LogDomain<F> {
     type Output = Self;
 
     fn mul(self, other: Self) -> Self {
-        LogProb(self.ln().add(other.ln()))
+        LogDomain(self.ln().add(other.ln()))
     }
 }
 
-impl<F: Float> Div for LogProb<F> {
+impl<F: Float> Div for LogDomain<F> {
     type Output = Self;
 
     fn div(self, other: Self) -> Self {
         if !other.is_zero() {
-            LogProb(self.ln().sub(other.ln()))
+            LogDomain(self.ln().sub(other.ln()))
         } else {
             panic!("division by zero")
         }
     }
 }
 
-impl<F: Float> Zero for LogProb<F> {
+impl<F: Float> Zero for LogDomain<F> {
     fn zero() -> Self {
-        LogProb(F::neg_infinity())
+        LogDomain(F::neg_infinity())
     }
 
     fn is_zero(&self) -> bool {
@@ -195,25 +200,25 @@ impl<F: Float> Zero for LogProb<F> {
     }
 }
 
-impl<F: Float> One for LogProb<F> {
+impl<F: Float> One for LogDomain<F> {
     fn one() -> Self {
-        LogProb(F::zero())
+        LogDomain(F::zero())
     }
 }
 
-impl<F: Debug + Float + FromStr<Err=E>, E: ToString> FromStr for LogProb<F> {
+impl<F: Debug + Float + FromStr<Err=E>, E: ToString> FromStr for LogDomain<F> {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.parse() {
-            Ok(p) => LogProb::new(p),
+            Ok(p) => LogDomain::new(p),
             Err(e) => Err(e.to_string()),
         }
     }
 }
 
-impl<F: Float + Display> Display for LogProb<F> {
+impl<F: Float + Display> Display for LogDomain<F> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "{}", self.probability())
+        write!(f, "{}", self.value())
     }
 }
