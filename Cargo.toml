@@ -8,3 +8,4 @@ authors = ["Tobias Denkinger <tobias.denkinger@tu-dresden.de>"]
 
 [dependencies]
 num-traits = "0.1.36"
+serde = "1.0"

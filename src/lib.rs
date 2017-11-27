@@ -1,4 +1,5 @@
 extern crate num_traits;
+extern crate serde;
 
 use std::fmt::{self, Debug, Display, Formatter};
 use std::cmp::Ordering;
@@ -6,6 +7,8 @@ use std::ops::{Add, Sub, Mul, Div};
 use std::str::FromStr;
 
 use self::num_traits::{Float, One, Zero};
+use serde::ser::{Serialize, Serializer};
+use serde::de::{Deserialize, Deserializer};
 
 /// A struct that represents positive floats by their natural logarithm.
 ///
@@ -231,5 +234,18 @@ impl<F: Debug + Float + FromStr<Err=E>, E: ToString> FromStr for LogDomain<F> {
 impl<F: Float + Display> Display for LogDomain<F> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "{}", self.value())
+    }
+}
+
+impl<F: Float + Serialize> Serialize for LogDomain<F> {
+    fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        self.ln().serialize(s)
+    }
+}
+
+impl<'de, F: Float + Deserialize<'de>> Deserialize<'de> for LogDomain<F> {
+    fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let f = F::deserialize(d)?;
+        Ok(LogDomain(f))
     }
 }
