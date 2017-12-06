@@ -3,10 +3,10 @@ extern crate serde;
 
 use std::fmt::{self, Debug, Display, Formatter};
 use std::cmp::Ordering;
-use std::ops::{Add, Sub, Mul, Div};
+use std::ops::{Add, AddAssign, Sub, SubAssign, Mul, MulAssign, Div, DivAssign};
 use std::str::FromStr;
 
-use self::num_traits::{Float, One, Zero};
+use num_traits::{Float, One, Zero};
 use serde::ser::{Serialize, Serializer};
 use serde::de::{Deserialize, Deserializer};
 
@@ -33,6 +33,20 @@ use serde::de::{Deserialize, Deserializer};
 ///         assert_eq!(y / x, x);                  // 0.25 / 0.5  = 0.5
 ///         assert_eq!(x.pow(2.0), y);             // 0.5²        = 0.25
 ///         assert_eq!(y.pow(1.0 / 2.0), x);       // √0.25       = 0.5
+///
+///         // Assignment operators `+=`, `-=`, `*=`, and `/=`
+///         let mut a = x;
+///         a += y;                                // a = 0.5  + 0.25 = 0.75
+///         assert_eq!(a, z);                      // a = 0.75 = z
+///         a = z;
+///         a -= x;                                // a = 0.75 - 0.5  = 0.25
+///         assert_eq!(a, y);                      // a = 0.25 = y
+///         a = x;
+///         a *= a;                                // a = 0.5  * 0.5  = 0.25
+///         assert_eq!(a, y);                      // a = 0.25 = y
+///         a = y;
+///         a /= x;                                // a = 0.25 / 0.5  = 0.5
+///         assert_eq!(a, x);                      // a = 0.5 = x
 ///
 ///         // Neutral elements `LogDomain::zero()` and `LogDomain::one()`
 ///         assert_eq!(z + LogDomain::zero(), z);  // 0.75 + 0    = 0.75
@@ -160,6 +174,12 @@ impl<F: Float> Add for LogDomain<F> {
     }
 }
 
+impl<F: Float> AddAssign for LogDomain<F> {
+    fn add_assign(&mut self, other: Self) {
+        *self = *self + other;
+    }
+}
+
 /// An `impl` of `Sub` that uses only two applications of transcendental functions
 /// (`exp_m1` and `ln`) to increase precision.
 impl<F: Float + Debug> Sub for LogDomain<F> {
@@ -184,11 +204,23 @@ impl<F: Float + Debug> Sub for LogDomain<F> {
     }
 }
 
+impl<F: Float + Debug> SubAssign for LogDomain<F> {
+    fn sub_assign(&mut self, other: Self) {
+        *self = *self - other;
+    }
+}
+
 impl<F: Float> Mul for LogDomain<F> {
     type Output = Self;
 
     fn mul(self, other: Self) -> Self {
         LogDomain(self.ln().add(other.ln()))
+    }
+}
+
+impl<F: Float> MulAssign for LogDomain<F> {
+    fn mul_assign(&mut self, other: Self) {
+        *self = *self * other;
     }
 }
 
@@ -201,6 +233,12 @@ impl<F: Float> Div for LogDomain<F> {
         } else {
             panic!("division by zero")
         }
+    }
+}
+
+impl<F: Float> DivAssign for LogDomain<F> {
+    fn div_assign(&mut self, other: Self) {
+        *self = *self / other;
     }
 }
 
