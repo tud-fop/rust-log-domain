@@ -6,8 +6,8 @@ Logarithmic representation of floats for rust.
 BSD-3-clause
 
 ## Documentation
-* see `src/lib.rs`
-* generate HTML-documentation with `cargo doc`
+* https://docs.rs/log_domain/0.4.0/log_domain/
+* or generate HTML-documentation with `cargo doc`
 
 ## Use
 * Include the crate in your rust project by adding
