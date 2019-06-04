@@ -3,6 +3,7 @@ extern crate serde;
 
 use std::fmt::{self, Debug, Display, Formatter};
 use std::cmp::Ordering;
+use std::iter::{Product, Sum};
 use std::ops::{Add, AddAssign, Sub, SubAssign, Mul, MulAssign, Div, DivAssign};
 use std::str::FromStr;
 
@@ -186,6 +187,15 @@ impl<F: Float> AddAssign for LogDomain<F> {
     }
 }
 
+impl<F: Float> Sum for LogDomain<F> {
+    fn sum<I>(iter: I) -> Self
+    where
+        I: Iterator<Item = Self>,
+    {
+        iter.fold(Self::zero(), |a, b| a + b)
+    }
+}
+
 /// An `impl` of `Sub` that uses only two applications of transcendental functions
 /// (`exp_m1` and `ln`) to increase precision.
 impl<F: Float + Debug> Sub for LogDomain<F> {
@@ -227,6 +237,15 @@ impl<F: Float> Mul for LogDomain<F> {
 impl<F: Float> MulAssign for LogDomain<F> {
     fn mul_assign(&mut self, other: Self) {
         *self = *self * other;
+    }
+}
+
+impl<F: Float> Product for LogDomain<F> {
+    fn product<I>(iter: I) -> Self
+    where
+        I: Iterator<Item = Self>,
+    {
+        iter.fold(Self::one(), |a, b| a * b)
     }
 }
 
