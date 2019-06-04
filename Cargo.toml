@@ -3,7 +3,7 @@ name = "log_domain"
 description = "Logarithmic representation of floats"
 repository = "https://github.com/tud-fop/rust-log-domain"
 license = "BSD-3-Clause"
-version = "0.4.0"
+version = "0.4.1"
 authors = ["Tobias Denkinger <tobias.denkinger@tu-dresden.de>"]
 
 [dependencies]

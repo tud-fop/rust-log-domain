@@ -152,25 +152,31 @@ impl<F: Float> Add for LogDomain<F> {
     type Output = Self;
 
     fn add(self, other: Self) -> Self {
-        let (a, b) = (self.ln(), other.ln());
-
-        let (x, y) = if a > b {
-            (a, b)
+        if self.is_zero() {
+            other
+        } else if other.is_zero() {
+            self
         } else {
-            (b, a)
-        };
+            let (a, b) = (self.ln(), other.ln());
 
-        // Derivation of the formula:
-        // Let x ≥ y.  Then
-        // LogDomain(x) + LogDomain(y)
-        // = exp(x) + exp(y)
-        // = LogDomain( ln(exp(x) + exp(y)) )
-        // = LogDomain( ln(exp(x) + exp(x) ⋅ exp(y) / exp(x)) )
-        // = LogDomain( ln(exp(x) + exp(x) ⋅ exp(y - x)) )
-        // = LogDomain( ln(exp(x) ⋅ (1 + exp(y - x))) )
-        // = LogDomain( x + ln(1 + exp(y - x)) )
-        // = LogDomain( x + ln_1p(exp(y - x)) )
-        LogDomain(x + (y - x).exp().ln_1p())
+            let (x, y) = if a > b {
+                (a, b)
+            } else {
+                (b, a)
+            };
+
+            // Derivation of the formula:
+            // Let x ≥ y.  Then
+            // LogDomain(x) + LogDomain(y)
+            // = exp(x) + exp(y)
+            // = LogDomain( ln(exp(x) + exp(y)) )
+            // = LogDomain( ln(exp(x) + exp(x) ⋅ exp(y) / exp(x)) )
+            // = LogDomain( ln(exp(x) + exp(x) ⋅ exp(y - x)) )
+            // = LogDomain( ln(exp(x) ⋅ (1 + exp(y - x))) )
+            // = LogDomain( x + ln(1 + exp(y - x)) )
+            // = LogDomain( x + ln_1p(exp(y - x)) )
+            LogDomain(x + (y - x).exp().ln_1p())
+        }
     }
 }
 
@@ -285,5 +291,23 @@ impl<'de, F: Float + Deserialize<'de>> Deserialize<'de> for LogDomain<F> {
     fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         let f = F::deserialize(d)?;
         Ok(LogDomain(f))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_neutral_elements() {
+        use super::LogDomain;
+        use num_traits::{One, Zero};
+        let z: LogDomain<f64> = LogDomain::zero();
+        let o: LogDomain<f64> = LogDomain::one();
+        assert_eq!(z + z, z);
+        assert_eq!(z * z, z);
+        assert_eq!(z + o, o);
+        assert_eq!(o + z, o);
+        assert_eq!(z * o, z);
+        assert_eq!(o * z, z);
+        assert_eq!(o * o, o);
     }
 }
