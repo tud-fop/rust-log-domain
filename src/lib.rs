@@ -1,6 +1,3 @@
-extern crate num_traits;
-extern crate serde;
-
 use std::fmt::{self, Debug, Display, Formatter};
 use std::cmp::Ordering;
 use std::iter::{Product, Sum};
@@ -8,8 +5,6 @@ use std::ops::{Add, AddAssign, Sub, SubAssign, Mul, MulAssign, Div, DivAssign};
 use std::str::FromStr;
 
 use num_traits::{Float, One, Zero};
-use serde::ser::{Serialize, Serializer};
-use serde::de::{Deserialize, Deserializer};
 
 /// A struct that represents positive floats by their natural logarithm.
 ///
@@ -300,16 +295,23 @@ impl<F: Float + Display> Display for LogDomain<F> {
     }
 }
 
-impl<F: Float + Serialize> Serialize for LogDomain<F> {
-    fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        self.ln().serialize(s)
-    }
-}
+#[cfg(feature = "serialization")]
+mod serialization {
+    use serde::ser::{Serialize, Serializer};
+    use serde::de::{Deserialize, Deserializer};
+    use super::*;
 
-impl<'de, F: Float + Deserialize<'de>> Deserialize<'de> for LogDomain<F> {
-    fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let f = F::deserialize(d)?;
-        Ok(LogDomain(f))
+    impl<F: Float + Serialize> Serialize for LogDomain<F> {
+        fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+            self.ln().serialize(s)
+        }
+    }
+
+    impl<'de, F: Float + Deserialize<'de>> Deserialize<'de> for LogDomain<F> {
+        fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+            let f = F::deserialize(d)?;
+            Ok(LogDomain(f))
+        }
     }
 }
 
